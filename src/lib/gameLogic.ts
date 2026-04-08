@@ -997,7 +997,7 @@ export function startNewRound(state: GameState): GameState {
 
   const firstBidder = (newDealerIndex + 1) % state.playerCount;
 
-  return {
+  const next: GameState = {
     ...state,
     players,
     currentPlayerIndex: firstBidder,
@@ -1021,8 +1021,7 @@ export function startNewRound(state: GameState): GameState {
   };
 
   // Check end conditions
-  const isOver = checkGameOver(next);
-  if (isOver) {
+  if (checkGameOver(next)) {
     next.gameOver = true;
     next.winner = getWinner(next);
   }

@@ -1,175 +1,167 @@
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-import type { Card, CardType, Suit } from "@/lib/gameLogic";
-import { isBout, SUIT_SYMBOLS, SUIT_COLORS } from "@/lib/gameLogic";
+import { Card, SUIT_SYMBOLS, isBout } from '@/lib/gameLogic';
+import { motion } from 'framer-motion';
 
 interface PlayingCardProps {
   card: Card;
-  onClick?: () => void;
-  disabled?: boolean;
   selected?: boolean;
-  size?: "small" | "compact" | "full";
+  onClick?: () => void;
   faceDown?: boolean;
+  small?: boolean;
+  compact?: boolean;
+  highlight?: boolean;
+  delay?: number;
 }
 
-const sizeClasses = {
-  small: "w-10 h-14 text-[10px]",
-  compact: "w-14 h-20 text-xs",
-  full: "w-20 h-28 text-sm",
-};
+const isRed = (suit: string) => suit === 'diamonds' || suit === 'hearts';
 
-function getSuitSymbol(suit: Suit): string {
-  return SUIT_SYMBOLS[suit] || "?";
-}
+export default function PlayingCard({ card, selected, onClick, faceDown, small, compact, highlight, delay = 0 }: PlayingCardProps) {
+  const isTrump = card.type === 'trump';
+  const isExcuse = card.type === 'excuse';
+  const bout = isBout(card);
 
-function getSuitColor(suit: Suit): string {
-  return SUIT_COLORS[suit] || "text-white";
-}
+  // Colors
+  let suitColor = '#1a1a2e';
+  if (card.type === 'suit' && isRed(card.suit)) suitColor = '#d42b2b';
+  if (isTrump) suitColor = '#b8860b';
+  if (isExcuse) suitColor = '#6b21a8';
 
-function CardBack({ size }: { size: "small" | "compact" | "full" }) {
-  return (
-    <div
-      className={cn(
-        sizeClasses[size],
-        "rounded-lg relative overflow-hidden card-shadow",
-        "bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-950",
-        "border border-purple-500/30"
-      )}
-    >
-      <div className="absolute inset-1 rounded border border-gold/20 stars-pattern" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-gold/40 text-lg">&#x2726;</div>
-      </div>
-    </div>
-  );
-}
-
-function SuitCard({ card, size }: { card: Card; size: "small" | "compact" | "full" }) {
-  const symbol = getSuitSymbol(card.suit!);
-  const colorClass = getSuitColor(card.suit!);
-  const label = card.rank || "";
-
-  return (
-    <>
-      <div className={cn("absolute top-1 left-1 flex flex-col items-center leading-none font-bold", colorClass)}>
-        <span>{label}</span>
-        <span className={size === "small" ? "text-[8px]" : "text-xs"}>{symbol}</span>
-      </div>
-      <div className={cn("absolute bottom-1 right-1 flex flex-col items-center leading-none font-bold rotate-180", colorClass)}>
-        <span>{label}</span>
-        <span className={size === "small" ? "text-[8px]" : "text-xs"}>{symbol}</span>
-      </div>
-      <div className={cn("absolute inset-0 flex items-center justify-center", colorClass)}>
-        <span className={size === "full" ? "text-2xl" : size === "compact" ? "text-xl" : "text-base"}>
-          {symbol}
-        </span>
-      </div>
-    </>
-  );
-}
-
-function TrumpCard({ card, size }: { card: Card; size: "small" | "compact" | "full" }) {
-  const isBoutCard = isBout(card);
-  return (
-    <>
-      <div className="absolute top-1 left-1 flex flex-col items-center leading-none font-bold text-gold">
-        <span>{card.rank}</span>
-        <span className={size === "small" ? "text-[6px]" : "text-[8px]"}>&#x2605;</span>
-      </div>
-      <div className="absolute bottom-1 right-1 flex flex-col items-center leading-none font-bold rotate-180 text-gold">
-        <span>{card.rank}</span>
-        <span className={size === "small" ? "text-[6px]" : "text-[8px]"}>&#x2605;</span>
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <span className={cn(
-            "font-bold",
-            isBoutCard ? "text-purple-300" : "text-gold",
-            size === "full" ? "text-2xl" : size === "compact" ? "text-xl" : "text-base"
-          )}>
-            {card.rank}
-          </span>
-          <span className={cn("text-gold/60", size === "small" ? "text-[6px]" : "text-[8px]")}>
-            ATOUT
-          </span>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function ExcuseCard({ size }: { size: "small" | "compact" | "full" }) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center">
-      <div className="flex flex-col items-center">
-        <span className={cn(
-          "text-purple-300",
-          size === "full" ? "text-2xl" : size === "compact" ? "text-lg" : "text-sm"
-        )}>
-          &#x2606;
-        </span>
-        <span className={cn(
-          "font-bold text-purple-200",
-          size === "full" ? "text-xs" : "text-[8px]"
-        )}>
-          EXCUSE
-        </span>
-      </div>
-    </div>
-  );
-}
-
-export default function PlayingCard({
-  card,
-  onClick,
-  disabled = false,
-  selected = false,
-  size = "full",
-  faceDown = false,
-}: PlayingCardProps) {
   if (faceDown) {
     return (
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.2 }}
-      >
-        <CardBack size={size} />
-      </motion.div>
+      <div style={{
+        width: small ? 32 : 56, height: small ? 44 : 80,
+        borderRadius: 7,
+        background: 'linear-gradient(145deg, #1a3a24, #0d2014)',
+        border: '1.5px solid rgba(80,150,90,0.4)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+      }}>
+        <span style={{ fontSize: 10, color: 'rgba(245,200,66,0.4)', fontFamily: 'Cinzel, serif' }}>T</span>
+      </div>
     );
   }
 
-  const isBoutCard = isBout(card);
-  const isTrump = card.type === "trump";
-  const isExcuse = card.type === "excuse";
+  const w = small ? 32 : compact ? 64 : 76;
+  const h = small ? 44 : compact ? 92 : 108;
+  const rankSize = small ? 9 : compact ? 13 : 15;
+  const suitCenterSize = small ? 13 : compact ? 19 : 23;
+
+  // Display values
+  let displayRank = card.rank;
+  let centerSymbol = '';
+
+  if (card.type === 'suit') {
+    centerSymbol = SUIT_SYMBOLS[card.suit] ?? '';
+  } else if (isTrump) {
+    centerSymbol = '\u2605'; // star for trump
+  } else if (isExcuse) {
+    displayRank = '\u2606';
+    centerSymbol = '\u2606'; // star outline for excuse
+  }
+
+  // Border styles for bouts
+  const boutBorder = bout ? '2px solid #d4a017' : undefined;
+  const boutGlow = bout ? '0 0 12px rgba(212,160,23,0.5)' : undefined;
 
   return (
     <motion.div
-      initial={{ scale: 0.8, opacity: 0, y: 20 }}
-      animate={{
-        scale: 1,
-        opacity: 1,
-        y: selected ? -12 : 0,
+      initial={{ y: 40, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ delay: delay * 0.04, type: 'spring', stiffness: 280, damping: 22 }}
+      onClick={onClick}
+      style={{
+        width: w, height: h,
+        borderRadius: small ? 5 : 8,
+        background: isTrump
+          ? selected
+            ? 'linear-gradient(180deg, #fff8e1 0%, #ffe0b2 100%)'
+            : 'linear-gradient(180deg, #fffde7 0%, #fff3e0 100%)'
+          : isExcuse
+          ? selected
+            ? 'linear-gradient(180deg, #f3e5f5 0%, #e1bee7 100%)'
+            : 'linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%)'
+          : selected
+          ? 'linear-gradient(180deg, #fffef8 0%, #faf8ee 100%)'
+          : 'linear-gradient(180deg, #ffffff 0%, #f5f3e8 100%)',
+        border: selected
+          ? '2px solid #d4a017'
+          : highlight
+          ? '2px solid #d42b2b'
+          : boutBorder
+          ?? '1.5px solid rgba(0,0,0,0.12)',
+        boxShadow: selected
+          ? '0 0 0 2px rgba(212,160,23,0.4), 0 6px 18px rgba(0,0,0,0.5)'
+          : highlight
+          ? '0 0 0 3px rgba(212,43,43,0.35), 0 4px 14px rgba(0,0,0,0.5)'
+          : boutGlow
+          ? `${boutGlow}, 0 3px 10px rgba(0,0,0,0.5)`
+          : '0 3px 10px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3)',
+        cursor: onClick ? 'pointer' : 'default',
+        userSelect: 'none',
+        position: 'relative',
+        flexShrink: 0,
+        overflow: 'hidden',
       }}
-      whileHover={!disabled ? { y: -6, scale: 1.05 } : undefined}
-      transition={{ duration: 0.2 }}
-      onClick={!disabled ? onClick : undefined}
-      className={cn(
-        sizeClasses[size],
-        "rounded-lg relative overflow-hidden cursor-pointer select-none transition-shadow",
-        "bg-gradient-to-br from-gray-100 to-gray-200",
-        disabled && "opacity-50 cursor-not-allowed",
-        selected && "ring-2 ring-gold",
-        isTrump && !isExcuse && "trump-border",
-        isBoutCard && "bout-border",
-        isExcuse && "border-2 border-purple-400/50",
-        !isTrump && !isExcuse && "border border-gray-300/50",
-        "card-shadow hover:card-shadow-hover"
-      )}
     >
-      {card.type === "suit" && <SuitCard card={card} size={size} />}
-      {card.type === "trump" && <TrumpCard card={card} size={size} />}
-      {card.type === "excuse" && <ExcuseCard size={size} />}
+      {/* Top-left rank + suit */}
+      <div style={{ position: 'absolute', top: 2, left: 3, lineHeight: 1.1, textAlign: 'center' }}>
+        <div style={{ fontSize: rankSize, fontWeight: 800, color: suitColor, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>
+          {displayRank}
+        </div>
+        {!small && card.type === 'suit' && (
+          <div style={{ fontSize: rankSize - 1, color: suitColor, lineHeight: 1 }}>
+            {SUIT_SYMBOLS[card.suit]}
+          </div>
+        )}
+        {!small && isTrump && (
+          <div style={{ fontSize: rankSize - 2, color: suitColor, lineHeight: 1 }}>
+            \u2605
+          </div>
+        )}
+      </div>
+
+      {/* Center symbol */}
+      <div style={{
+        position: 'absolute',
+        top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        fontSize: suitCenterSize, color: suitColor, lineHeight: 1,
+      }}>
+        {centerSymbol}
+      </div>
+
+      {/* Bout indicator */}
+      {bout && !small && (
+        <div style={{
+          position: 'absolute', top: 1, right: 2,
+          fontSize: 8, color: '#d4a017', fontWeight: 'bold',
+        }}>
+          B
+        </div>
+      )}
+
+      {/* Bottom-right rank (rotated 180) */}
+      {!small && (
+        <div style={{
+          position: 'absolute', bottom: 2, right: 3,
+          lineHeight: 1.1, textAlign: 'center',
+          transform: 'rotate(180deg)',
+          transformOrigin: 'center center',
+        }}>
+          <div style={{ fontSize: rankSize, fontWeight: 800, color: suitColor, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>
+            {displayRank}
+          </div>
+          {card.type === 'suit' && (
+            <div style={{ fontSize: rankSize - 1, color: suitColor, lineHeight: 1 }}>
+              {SUIT_SYMBOLS[card.suit]}
+            </div>
+          )}
+          {isTrump && (
+            <div style={{ fontSize: rankSize - 2, color: suitColor, lineHeight: 1 }}>
+              \u2605
+            </div>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 }

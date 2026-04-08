@@ -1,18 +1,17 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { supabase, isSupabaseConfigured, type Profile } from "@/lib/supabase";
-import type { User, Session } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase, isSupabaseConfigured, Profile } from '@/lib/supabase';
 
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  isConfigured: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string) => Promise<{ error: Error | null; needsConfirmation?: boolean }>;
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
-}
+  refreshProfile: () => Promise<void>;
+};
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -22,80 +21,91 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (data) setProfile(data as Profile);
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
+  // 1. onAuthStateChange : SYNCHRONE uniquement, pas d'await
   useEffect(() => {
-    // If Supabase is not configured, skip auth entirely
     if (!isSupabaseConfigured) {
       setLoading(false);
       return;
     }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      setLoading(false);
-    }).catch(() => {
-      setLoading(false);
+      if (!session?.user) {
+        setProfile(null);
+        setLoading(false);
+      }
+      // Si session présente, loading sera mis à false après fetchProfile (voir effet ci-dessous)
     });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setProfile(null);
-    });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchProfile(userId: string) {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
-      if (data) setProfile(data as Profile);
-    } catch {}
-  }
+  // 2. Charger le profil dès que l'utilisateur change (ou au démarrage)
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      // Créer profil si absent (première connexion après confirmation email)
+      supabase.from('profiles').select('id').eq('id', user.id).maybeSingle().then(async ({ data: existing }) => {
+        if (!existing) {
+          const username = user.user_metadata?.username ?? user.email?.split('@')[0] ?? 'Joueur';
+          await supabase.from('profiles').upsert({
+            id: user.id,
+            username,
+            avatar_emoji: '🎭',
+            tarot_elo: 1000,
+            tarot_games_played: 0,
+            tarot_wins: 0,
+            tarot_best_elo: 1000,
+          });
+        }
+        await fetchProfile(user.id);
+        setLoading(false);
+      });
+    }
+  }, [user?.id]);
 
-  async function signIn(email: string, password: string) {
-    if (!isSupabaseConfigured) return;
+  const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  }
+    return { error };
+  };
 
-  async function signUp(email: string, password: string, username: string) {
-    if (!isSupabaseConfigured) return;
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (email: string, password: string, username: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { username } },
     });
-    if (error) throw error;
-  }
+    if (!error && data.user) {
+      if (data.session) {
+        return { error: null };
+      } else {
+        return { error: null, needsConfirmation: true };
+      }
+    }
+    return { error };
+  };
 
-  async function signOut() {
-    if (!isSupabaseConfigured) return;
+  const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
-  }
-
-  async function signInWithGoogle() {
-    if (!isSupabaseConfigured) return;
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google" });
-    if (error) throw error;
-  }
+  };
 
   return (
-    <AuthContext.Provider value={{
-      user, session, profile, loading,
-      isConfigured: isSupabaseConfigured,
-      signIn, signUp, signOut, signInWithGoogle,
-    }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signUp, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
@@ -103,6 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
