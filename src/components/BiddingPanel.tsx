@@ -1,11 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import type { BidLevel, Player } from "@/lib/gameLogic";
+import { cn } from "@/lib/utils";
+import type { BidLevel, GameState } from "@/lib/gameLogic";
 
 interface BiddingPanelProps {
-  currentHighestBid: BidLevel | null;
-  players: Player[];
-  currentBidderIndex: number;
+  gameState: GameState;
   onBid: (bid: BidLevel | null) => void;
   isHumanTurn: boolean;
 }
@@ -17,21 +16,15 @@ const BID_OPTIONS: { level: BidLevel; label: string; description: string }[] = [
   { level: "garde_contre", label: "Garde Contre", description: "x6" },
 ];
 
-const BID_HIERARCHY: Record<BidLevel, number> = {
+const BID_HIERARCHY: Record<string, number> = {
   petite: 1,
   garde: 2,
   garde_sans: 3,
   garde_contre: 4,
 };
 
-export default function BiddingPanel({
-  currentHighestBid,
-  players,
-  currentBidderIndex,
-  onBid,
-  isHumanTurn,
-}: BiddingPanelProps) {
-  const minBidValue = currentHighestBid ? BID_HIERARCHY[currentHighestBid] : 0;
+export default function BiddingPanel({ gameState, onBid, isHumanTurn }: BiddingPanelProps) {
+  const minBidValue = gameState.currentBid ? BID_HIERARCHY[gameState.currentBid] || 0 : 0;
 
   return (
     <AnimatePresence>
@@ -45,18 +38,22 @@ export default function BiddingPanel({
 
         {/* Current bids display */}
         <div className="flex flex-wrap gap-2 justify-center mb-3">
-          {players.map((p, i) => (
-            <div
-              key={p.id}
-              className={cn(
-                "px-2 py-1 rounded text-xs",
-                i === currentBidderIndex ? "bg-gold/20 text-gold border border-gold/30" : "bg-white/5 text-muted-foreground"
-              )}
-            >
-              <span className="font-medium">{p.name}:</span>{" "}
-              {p.currentBid ? p.currentBid : p.hasPassed ? "Passe" : "..."}
-            </div>
-          ))}
+          {gameState.players.map((p, i) => {
+            const playerBid = gameState.bids.find(b => b.playerId === p.id);
+            const isPassed = playerBid?.bid === 'passe';
+            const bidLabel = playerBid ? (isPassed ? 'Passe' : playerBid.bid) : '...';
+            return (
+              <div
+                key={p.id}
+                className={cn(
+                  "px-2 py-1 rounded text-xs",
+                  i === gameState.currentPlayerIndex ? "bg-gold/20 text-gold border border-gold/30" : "bg-white/5 text-muted-foreground"
+                )}
+              >
+                <span className="font-medium">{p.name}:</span> {bidLabel}
+              </div>
+            );
+          })}
         </div>
 
         {/* Bid buttons for human */}
@@ -94,14 +91,10 @@ export default function BiddingPanel({
 
         {!isHumanTurn && (
           <div className="text-center text-muted-foreground text-sm animate-pulse">
-            {players[currentBidderIndex]?.name} reflechit...
+            {gameState.players[gameState.currentPlayerIndex]?.name} reflechit...
           </div>
         )}
       </motion.div>
     </AnimatePresence>
   );
-}
-
-function cn(...classes: (string | false | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }
