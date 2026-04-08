@@ -85,6 +85,11 @@ export interface GameState {
   lastRoundResult: RoundResult | null;
   round: number;
   gameOver: boolean;
+  winner: string | null; // playerId with highest score
+  // End condition
+  endMode: 'rounds' | 'score';
+  maxRounds: number;    // 5, 10, 15, 20
+  scoreLimit: number;   // 500, 1000 (only used in score mode)
   poigneeDeclaration: PoigneeDeclaration | null;
   petitAuBout: { lastTrickWinner: string | null; petitPlayedInLastTrick: boolean };
   difficulty: Difficulty;
@@ -333,7 +338,13 @@ export function sortCards(cards: Card[]): Card[] {
 // GAME STATE
 // ============================================================
 
-export function createInitialGameState(playerCount: PlayerCount, difficulty: Difficulty = 'normal'): GameState {
+export function createInitialGameState(
+  playerCount: PlayerCount,
+  difficulty: Difficulty = 'normal',
+  endMode: 'rounds' | 'score' = 'rounds',
+  maxRounds: number = 10,
+  scoreLimit: number = 500,
+): GameState {
   const players: Player[] = [];
   const names4 = ['Vous', 'Ouest', 'Nord', 'Est'];
   const names5 = ['Vous', 'Joueur 2', 'Joueur 3', 'Joueur 4', 'Joueur 5'];
@@ -384,6 +395,10 @@ export function createInitialGameState(playerCount: PlayerCount, difficulty: Dif
     lastRoundResult: null,
     round: 1,
     gameOver: false,
+    winner: null,
+    endMode,
+    maxRounds,
+    scoreLimit,
     poigneeDeclaration: null,
     petitAuBout: { lastTrickWinner: null, petitPlayedInLastTrick: false },
     difficulty,
@@ -1004,6 +1019,35 @@ export function startNewRound(state: GameState): GameState {
     poigneeDeclaration: null,
     petitAuBout: { lastTrickWinner: null, petitPlayedInLastTrick: false },
   };
+
+  // Check end conditions
+  const isOver = checkGameOver(next);
+  if (isOver) {
+    next.gameOver = true;
+    next.winner = getWinner(next);
+  }
+
+  return next;
+}
+
+function checkGameOver(state: GameState): boolean {
+  if (state.endMode === 'rounds') {
+    return state.round > state.maxRounds;
+  }
+  // Score mode: someone reached the limit
+  return state.scores.some(s => s >= state.scoreLimit);
+}
+
+function getWinner(state: GameState): string | null {
+  let maxScore = -Infinity;
+  let winnerId: string | null = null;
+  state.scores.forEach((s, i) => {
+    if (s > maxScore) {
+      maxScore = s;
+      winnerId = state.players[i].id;
+    }
+  });
+  return winnerId;
 }
 
 // ============================================================
