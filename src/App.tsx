@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,7 +22,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <BrowserRouter basename="/tarot">
+          <HashRouter>
             <Routes>
               <Route path="/" element={<Onboarding />} />
               <Route path="/lobby" element={<Lobby />} />
@@ -34,7 +34,7 @@ export default function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
+          </HashRouter>
           <Toaster />
           <Sonner />
         </TooltipProvider>

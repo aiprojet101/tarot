@@ -138,7 +138,7 @@ export default function ScoreBoard({ gameState, roundResult, onContinue }: Score
 
       {gameState.gameOver && (
         <button
-          onClick={() => window.location.href = '/lobby'}
+          onClick={() => window.location.hash = '#/lobby'}
           className="w-full btn-primary mt-4"
         >
           Retour au lobby

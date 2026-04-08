@@ -543,7 +543,7 @@ export default function GameTable() {
       {/* Back button */}
       <div className="absolute top-2 right-2 z-50">
         <button
-          onClick={() => { if (confirm('Quitter la partie ?')) window.location.href = '/lobby'; }}
+          onClick={() => { if (confirm('Quitter la partie ?')) window.location.hash = '#/lobby'; }}
           className="glass-card px-3 py-1.5 text-xs text-muted-foreground hover:text-white transition-colors"
         >
           Quitter
