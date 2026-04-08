@@ -22,7 +22,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
-          <BrowserRouter>
+          <BrowserRouter basename="/tarot">
             <Routes>
               <Route path="/" element={<Onboarding />} />
               <Route path="/lobby" element={<Lobby />} />
